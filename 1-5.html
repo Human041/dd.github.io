@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>紙張庫存管理系統</title>
+    <style>
+        .container {
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .shelf-section {
+            margin: 30px 0;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 10px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f5f5f5;
+        }
+        .control-panel {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        .error-msg {
+            color: red;
+            margin-left: 10px;
+            font-weight: bold;
+        }
+        .log-section {
+            margin-top: 30px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+        }
+        #logs div {
+            padding: 5px;
+            border-bottom: 1px solid #eee;
+        }
+        button {
+            padding: 8px 12px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        input, select {
+            padding: 6px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .form-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        .search-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ddd;
+            background-color: #fff;
+        }
+        @media (max-width: 600px) {
+            .control-panel, .form-container, .search-container {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 操作面板 -->
+        <div class="control-panel">
+            <button onclick="showAddForm()">新增紙種</button>
+            <button onclick="showDeleteForm()">刪除紙種</button>
+            <button onclick="showTransferForm()">調動紙種</button>
+        </div>
+
+        <!-- 新增表單 -->
+        <div id="addForm" style="display:none;" class="form-container">
+            <input type="text" id="newName" placeholder="紙種名稱">
+            <input type="text" id="newSize" placeholder="尺寸">
+            <input type="number" id="newQty" placeholder="數量" min="0">
+            <select id="newShelf">
+                <option value="1">貨架一</option>
+                <option value="2">貨架二</option>
+                <option value="3">貨架三</option>
+                <option value="4">貨架四</option>
+                <option value="5">貨架五</option>
+            </select>
+            <button onclick="addPaper()">確認</button>
+            <span id="addError" class="error-msg"></span>
+        </div>
+
+        <!-- 刪除表單 -->
+        <div id="deleteForm" style="display:none;" class="form-container">
+            <select id="delShelf">
+                <option value="1">貨架一</option>
+                <option value="2">貨架二</option>
+                <option value="3">貨架三</option>
+                <option value="4">貨架四</option>
+                <option value="5">貨架五</option>
+            </select>
+            <input type="text" id="delName" placeholder="紙種名稱">
+            <input type="text" id="delSize" placeholder="尺寸">
+            <button onclick="confirmDelete()">刪除</button>
+            <span id="delConfirm" class="error-msg"></span>
+        </div>
+
+        <!-- 調動表單 -->
+        <div id="transferForm" style="display:none;" class="form-container">
+            <select id="fromShelf">
+                <option value="1">貨架一</option>
+                <option value="2">貨架二</option>
+                <option value="3">貨架三</option>
+                <option value="4">貨架四</option>
+                <option value="5">貨架五</option>
+            </select>
+            <input type="text" id="transferName" placeholder="紙種名稱">
+            <input type="text" id="transferSize" placeholder="尺寸">
+            <input type="number" id="transferQty" placeholder="調動數量" min="1">
+            <select id="toShelf">
+                <option value="1">貨架一</option>
+                <option value="2">貨架二</option>
+                <option value="3">貨架三</option>
+                <option value="4">貨架四</option>
+                <option value="5">貨架五</option>
+            </select>
+            <button onclick="transferPaper()">確認調動</button>
+            <span id="transferError" class="error-msg"></span>
+        </div>
+
+        <!-- 貨架表格 -->
+        <div class="shelf-section" id="shelves"></div>
+
+        <!-- 操作記錄 -->
+        <div class="log-section">
+            <h3>操作記錄（最近50筆）</h3>
+            <div class="search-container">
+                <input type="date" id="startDate" placeholder="開始日期">
+                <input type="date" id="endDate" placeholder="結束日期">
+                <input type="text" id="searchName" placeholder="紙種名稱">
+                <button onclick="searchLogs()">搜索</button>
+                <button onclick="resetLogs()">重置</button>
+                <span id="searchError" class="error-msg"></span>
+            </div>
+            <div id="logs"></div>
+        </div>
+    </div>
+
+    <script>
+        let shelvesData = {
+            1: { items: [], sortOrder: 'desc' },
+            2: { items: [], sortOrder: 'desc' },
+            3: { items: [], sortOrder: 'desc' },
+            4: { items: [], sortOrder: 'desc' },
+            5: { items: [], sortOrder: 'desc' }
+        };
+        let originalData = { 1: [], 2: [], 3: [], 4: [], 5: [] };
+        let logs = [];
+        let allLogs = [];
+
+        // 初始化貨架表格
+        function initShelves() {
+            let html = '';
+            for (let i = 1; i <= 5; i++) {
+                html += `
+                <div>
+                    <h3>貨架${i}</h3>
+                    <div class="control-panel">
+                        <button onclick="sortTable(${i}, 'name')">名稱排序</button>
+                        <button onclick="sortTable(${i}, 'size')">尺寸排序</button>
+                        <button onclick="sortTable(${i}, 'qty')">數量排序</button>
+                        <button onclick="clearSort(${i})">清除排序</button>
+                    </div>
+                    <table id="shelf${i}">
+                        <tr>
+                            <th>名稱</th>
+                            <th>尺寸</th>
+                            <th>數量 (張)</th>
+                            <th>調整數量</th>
+                        </tr>
+                    </table>
+                </div>`;
+            }
+            document.getElementById('shelves').innerHTML = html;
+        }
+
+        // 驗證輸入
+        function validateInput(name, size, qty) {
+            if (!name || !size || qty === '' || isNaN(qty) || qty < 0) {
+                return '請填寫所有欄位，且數量必須為非負數！';
+            }
+            return '';
+        }
+
+        // 新增紙種功能
+        function addPaper() {
+            const newItem = {
+                name: document.getElementById('newName').value.trim(),
+                size: document.getElementById('newSize').value.trim(),
+                qty: parseInt(document.getElementById('newQty').value, 10),
+                shelf: document.getElementById('newShelf').value
+            };
+
+            const error = validateInput(newItem.name, newItem.size, newItem.qty);
+            if (error) {
+                document.getElementById('addError').innerText = error;
+                return;
+            }
+
+            if (checkDuplicate(newItem)) {
+                document.getElementById('addError').innerText = '有相同紙種，請修改名稱或尺寸！';
+                return;
+            }
+
+            shelvesData[newItem.shelf].items.push(newItem);
+            originalData[newItem.shelf].push({ ...newItem });
+            updateTable(newItem.shelf);
+            addLog(newItem.shelf, newItem, '新增', 0, newItem.qty);
+            saveData();
+            clearForm('add');
+        }
+
+        // 刪除確認功能
+        function confirmDelete() {
+            const delInfo = {
+                shelf: document.getElementById('delShelf').value,
+                name: document.getElementById('delName').value.trim(),
+                size: document.getElementById('delSize').value.trim()
+            };
+
+            const error = validateInput(delInfo.name, delInfo.size, 0);
+            if (error) {
+                document.getElementById('delConfirm').innerText = '請填寫名稱和尺寸！';
+                return;
+            }
+
+            const itemIndex = shelvesData[delInfo.shelf].items.findIndex(
+                item => item.name === delInfo.name && item.size === delInfo.size
+            );
+            if (itemIndex === -1) {
+                document.getElementById('delConfirm').innerText = '找不到指定紙種！';
+                return;
+            }
+
+            if (confirm(`確定刪除 ${delInfo.name} (${delInfo.size}) 嗎？`)) {
+                const deletedItem = shelvesData[delInfo.shelf].items.splice(itemIndex, 1)[0];
+                originalData[delInfo.shelf] = originalData[delInfo.shelf].filter(
+                    item => !(item.name === delInfo.name && item.size === delInfo.size)
+                );
+                updateTable(delInfo.shelf);
+                addLog(delInfo.shelf, deletedItem, '刪除', deletedItem.qty, 0);
+                saveData();
+                clearForm('delete');
+            }
+        }
+
+        // 調動紙種功能
+        function transferPaper() {
+            const transferInfo = {
+                fromShelf: document.getElementById('fromShelf').value,
+                toShelf: document.getElementById('toShelf').value,
+                name: document.getElementById('transferName').value.trim(),
+                size: document.getElementById('transferSize').value.trim(),
+                qty: parseInt(document.getElementById('transferQty').value, 10)
+            };
+
+            // 驗證輸入
+            if (transferInfo.fromShelf === transferInfo.toShelf) {
+                document.getElementById('transferError').innerText = '不能在同一貨架間調動！';
+                return;
+            }
+            const error = validateInput(transferInfo.name, transferInfo.size, transferInfo.qty);
+            if (error) {
+                document.getElementById('transferError').innerText = error;
+                return;
+            }
+            if (transferInfo.qty <= 0) {
+                document.getElementById('transferError').innerText = '調動數量必須大於0！';
+                return;
+            }
+
+            // 檢查來源貨架是否有該紙種
+            const fromItemIndex = shelvesData[transferInfo.fromShelf].items.findIndex(
+                item => item.name === transferInfo.name && item.size === transferInfo.size
+            );
+            if (fromItemIndex === -1) {
+                document.getElementById('transferError').innerText = '來源貨架找不到指定紙種！';
+                return;
+            }
+
+            // 檢查數量是否足夠
+            const fromItem = shelvesData[transferInfo.fromShelf].items[fromItemIndex];
+            if (fromItem.qty < transferInfo.qty) {
+                document.getElementById('transferError').innerText = '來源貨架數量不足！';
+                return;
+            }
+
+            // 檢查目標貨架是否已有相同紙種
+            const toItemIndex = shelvesData[transferInfo.toShelf].items.findIndex(
+                item => item.name === transferInfo.name && item.size === transferInfo.size
+            );
+
+            // 執行調動
+            fromItem.qty -= transferInfo.qty;
+            if (toItemIndex !== -1) {
+                // 目標貨架已有該紙種，增加數量
+                shelvesData[transferInfo.toShelf].items[toItemIndex].qty += transferInfo.qty;
+            } else {
+                // 目標貨架沒有該紙種，新建記錄
+                shelvesData[transferInfo.toShelf].items.push({
+                    name: transferInfo.name,
+                    size: transferInfo.size,
+                    qty: transferInfo.qty
+                });
+                originalData[transferInfo.toShelf].push({
+                    name: transferInfo.name,
+                    size: transferInfo.size,
+                    qty: transferInfo.qty
+                });
+            }
+
+            // 如果來源貨架數量為0，刪除該記錄
+            if (fromItem.qty === 0) {
+                shelvesData[transferInfo.fromShelf].items.splice(fromItemIndex, 1);
+                originalData[transferInfo.fromShelf] = originalData[transferInfo.fromShelf].filter(
+                    item => !(item.name === transferInfo.name && item.size === transferInfo.size)
+                );
+            }
+
+            // 更新表格和記錄
+            updateTable(transferInfo.fromShelf);
+            updateTable(transferInfo.toShelf);
+            addLog(transferInfo.fromShelf, transferInfo, '調出', transferInfo.qty, -transferInfo.qty);
+            addLog(transferInfo.toShelf, transferInfo, '調入', 0, transferInfo.qty);
+            saveData();
+            clearForm('transfer');
+        }
+
+        // 表格更新
+        function updateTable(shelfNum) {
+            const table = document.getElementById(`shelf${shelfNum}`);
+            let rows = '<tr><th>名稱</th><th>尺寸</th><th>數量</th><th>調整數量</th></tr>';
+            shelvesData[shelfNum].items.forEach((item, index) => {
+                rows += `<tr>
+                    <td>${item.name}</td>
+                    <td>${item.size}</td>
+                    <td>${item.qty} 張</td>
+                    <td>
+                        <input type="number" id="adjustQty${shelfNum}_${index}" placeholder="輸入調整數量" style="width: 100px;">
+                        <button onclick="adjustQuantity(${shelfNum}, ${index})">確定</button>
+                    </td>
+                </tr>`;
+            });
+            table.innerHTML = rows;
+        }
+
+        // 排序功能
+        function sortTable(shelfNum, type) {
+            const shelfData = shelvesData[shelfNum].items;
+            const currentOrder = shelvesData[shelfNum].sortOrder;
+
+            shelfData.sort((a, b) => {
+                let comparison = 0;
+                if (type === 'name') {
+                    comparison = a.name.localeCompare(b.name);
+                } else if (type === 'size') {
+                    comparison = a.size.localeCompare(b.size);
+                } else if (type === 'qty') {
+                    comparison = a.qty - b.qty;
+                }
+                return currentOrder === 'asc' ? comparison : -comparison;
+            });
+
+            shelvesData[shelfNum].sortOrder = currentOrder === 'asc' ? 'desc' : 'asc';
+            updateTable(shelfNum);
+        }
+
+        // 清除排序，恢復原始順序
+        function clearSort(shelfNum) {
+            shelvesData[shelfNum].items = [...originalData[shelfNum]];
+            shelvesData[shelfNum].sortOrder = 'desc';
+            updateTable(shelfNum);
+        }
+
+        // 檢查重複
+        function checkDuplicate(newItem) {
+            return shelvesData[newItem.shelf].items.some(
+                item => item.name === newItem.name && item.size === newItem.size
+            );
+        }
+
+        // 添加操作記錄
+        function addLog(shelfNum, item, action, originalQty, newQty) {
+            const timestamp = new Date().toLocaleString();
+            let message = '';
+            if (action === '新增') {
+                message = `貨架${shelfNum}：新增 ${item.name} (${item.size})，數量 ${newQty} 張，時間：${timestamp}`;
+            } else if (action === '刪除') {
+                message = `貨架${shelfNum}：刪除 ${item.name} (${item.size})，原數量 ${originalQty} 張，時間：${timestamp}`;
+            } else if (action === '調整') {
+                const change = newQty >= 0 ? `增加 ${newQty}` : `減少 ${Math.abs(newQty)}`;
+                message = `貨架${shelfNum}：${item.name} (${item.size}) 原數量 ${originalQty} 張，${change} 張，現數量 ${item.qty} 張，時間：${timestamp}`;
+            } else if (action === '調出') {
+                message = `貨架${shelfNum}：調出 ${item.name} (${item.size})，數量 ${originalQty} 張，時間：${timestamp}`;
+            } else if (action === '調入') {
+                message = `貨架${shelfNum}：調入 ${item.name} (${item.size})，數量 ${newQty} 張，時間：${timestamp}`;
+            }
+            allLogs.unshift({ message, timestamp: new Date() });
+            logs = allLogs.slice(0, 50);
+            updateLogs();
+        }
+
+        // 更新操作記錄顯示
+        function updateLogs() {
+            const logContainer = document.getElementById('logs');
+            logContainer.innerHTML = logs.map(log => `<div>${log.message}</div>`).join('');
+        }
+
+        // 搜索操作記錄
+        function searchLogs() {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            const searchName = document.getElementById('searchName').value.trim().toLowerCase();
+            const searchError = document.getElementById('searchError');
+
+            // 驗證日期範圍
+            if (startDate && endDate && new Date(startDate) > new Date(endDate)) {
+                searchError.innerText = '開始日期不能晚於結束日期！';
+                return;
+            }
+
+            logs = allLogs.filter(log => {
+                const logDate = new Date(log.timestamp);
+                const start = startDate ? new Date(startDate) : null;
+                const end = endDate ? new Date(endDate) : null;
+                const nameMatch = searchName ? log.message.toLowerCase().includes(searchName) : true;
+                const dateMatch = (!start || logDate >= start) && (!end || logDate <= new Date(end.setHours(23, 59, 59, 999)));
+                return nameMatch && dateMatch;
+            });
+
+            if (logs.length === 0) {
+                searchError.innerText = '無符合條件的記錄！';
+            } else {
+                searchError.innerText = '';
+            }
+
+            logs = logs.slice(0, 50);
+            updateLogs();
+        }
+
+        // 重置操作記錄顯示
+        function resetLogs() {
+            document.getElementById('startDate').value = '';
+            document.getElementById('endDate').value = '';
+            document.getElementById('searchName').value = '';
+            document.getElementById('searchError').innerText = '';
+            logs = allLogs.slice(0, 50);
+            updateLogs();
+        }
+
+        // 顯示新增表單
+        function showAddForm() {
+            document.getElementById('addForm').style.display = 'flex';
+            document.getElementById('deleteForm').style.display = 'none';
+            document.getElementById('transferForm').style.display = 'none';
+        }
+
+        // 顯示刪除表單
+        function showDeleteForm() {
+            document.getElementById('deleteForm').style.display = 'flex';
+            document.getElementById('addForm').style.display = 'none';
+            document.getElementById('transferForm').style.display = 'none';
+        }
+
+        // 顯示調動表單
+        function showTransferForm() {
+            document.getElementById('transferForm').style.display = 'flex';
+            document.getElementById('addForm').style.display = 'none';
+            document.getElementById('deleteForm').style.display = 'none';
+        }
+
+        // 清除表單內容
+        function clearForm(formType) {
+            if (formType === 'add') {
+                document.getElementById('newName').value = '';
+                document.getElementById('newSize').value = '';
+                document.getElementById('newQty').value = '';
+                document.getElementById('addError').innerText = '';
+            } else if (formType === 'delete') {
+                document.getElementById('delName').value = '';
+                document.getElementById('delSize').value = '';
+                document.getElementById('delConfirm').innerText = '';
+            } else if (formType === 'transfer') {
+                document.getElementById('transferName').value = '';
+                document.getElementById('transferSize').value = '';
+                document.getElementById('transferQty').value = '';
+                document.getElementById('transferError').innerText = '';
+            }
+        }
+
+        // 保存數據到 localStorage
+        function saveData() {
+            localStorage.setItem('shelvesData', JSON.stringify(shelvesData));
+            localStorage.setItem('originalData', JSON.stringify(originalData));
+            localStorage.setItem('allLogs', JSON.stringify(allLogs));
+        }
+
+        // 從 localStorage 加載數據
+        function loadData() {
+            const savedShelves = localStorage.getItem('shelvesData');
+            const savedOriginal = localStorage.getItem('originalData');
+            const savedLogs = localStorage.getItem('allLogs');
+            if (savedShelves) shelvesData = JSON.parse(savedShelves);
+            if (savedOriginal) originalData = JSON.parse(savedOriginal);
+            if (savedLogs) {
+                allLogs = JSON.parse(savedLogs);
+                logs = allLogs.slice(0, 50);
+            }
+            for (let i = 1; i <= 5; i++) {
+                updateTable(i);
+            }
+            updateLogs();
+        }
+
+        // 初始化測試數據
+        function initTestData() {
+            const testData = [
+                { shelf: 1, name: '正度紙', size: '78.7*109.2cm', qty: 100 },
+                { shelf: 2, name: 'A4紙', size: '21*29.7cm', qty: 200 },
+                { shelf: 3, name: '銅版紙', size: '88*120cm', qty: 50 },
+                { shelf: 4, name: '新聞紙', size: '54*78cm', qty: 300 },
+                { shelf: 5, name: '牛皮紙', size: '75*110cm', qty: 80 }
+            ];
+            testData.forEach(item => {
+                shelvesData[item.shelf].items.push(item);
+                originalData[item.shelf].push({ ...item });
+                addLog(item.shelf, item, '新增', 0, item.qty);
+            });
+            for (let i = 1; i <= 5; i++) {
+                updateTable(i);
+            }
+            saveData();
+        }
+
+        // 調整數量的函數
+        function adjustQuantity(shelfNum, index) {
+            const adjustInput = document.getElementById(`adjustQty${shelfNum}_${index}`);
+            const adjustValue = parseInt(adjustInput.value, 10);
+
+            if (isNaN(adjustValue)) {
+                alert('請輸入有效的數字！');
+                return;
+            }
+
+            const item = shelvesData[shelfNum].items[index];
+            const originalQty = item.qty;
+            item.qty += adjustValue;
+            if (item.qty < 0) {
+                alert('數量不能小於0！');
+                item.qty = originalQty;
+                return;
+            }
+            updateTable(shelfNum);
+            addLog(shelfNum, item, '調整', originalQty, adjustValue);
+            saveData();
+            adjustInput.value = '';
+        }
+
+        // 頁面加載時初始化
+        window.onload = function() {
+            initShelves();
+            if (localStorage.getItem('shelvesData')) {
+                loadData();
+            } else {
+                initTestData();
+            }
+        };
+    </script>
+</body>
+</html>
