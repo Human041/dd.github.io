@@ -35,21 +35,21 @@
     <title>紙張庫存管理系統</title>
     <style>
         .container {
-            padding: 20px;
+            padding: 10px;
             max-width: 1200px;
             margin: 0 auto;
         }
         .shelf-section {
-            margin: 30px 0;
+            margin: 15px 0;
         }
         table {
             border-collapse: collapse;
             width: 100%;
-            margin: 10px 0;
+            margin: 5px 0;
         }
         th, td {
             border: 1px solid #ddd;
-            padding: 8px;
+            padding: 6px;
             text-align: left;
         }
         th {
@@ -57,26 +57,39 @@
         }
         .control-panel {
             display: flex;
-            gap: 10px;
-            margin: 20px 0;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 10px 0;
+            align-items: center;
+        }
+        .control-panel-row {
+            display: flex;
+            width: 100%;
+            justify-content: space-between;
+            align-items: center;
+            margin: 5px 0;
+        }
+        .control-panel-left {
+            display: flex;
+            gap: 8px;
         }
         .error-msg {
             color: red;
-            margin-left: 10px;
+            margin-left: 8px;
             font-weight: bold;
         }
         .log-section {
-            margin-top: 30px;
-            padding: 10px;
+            margin-top: 15px;
+            padding: 8px;
             background-color: #f9f9f9;
             border: 1px solid #ddd;
         }
         #logs div {
-            padding: 5px;
+            padding: 4px;
             border-bottom: 1px solid #eee;
         }
         button {
-            padding: 8px 12px;
+            padding: 6px 10px;
             cursor: pointer;
             background-color: #007bff;
             color: white;
@@ -87,28 +100,25 @@
             background-color: #0056b3;
         }
         input, select {
-            padding: 6px;
-            margin: 5px;
+            padding: 5px;
+            margin: 4px;
             border: 1px solid #ddd;
             border-radius: 4px;
         }
         .form-container {
             display: flex;
             flex-wrap: wrap;
-            gap: 10px;
-            margin: 10px 0;
+            gap: 8px;
+            margin: 5px 0;
         }
         .search-container {
             display: flex;
             flex-wrap: wrap;
-            gap: 10px;
-            margin: 10px 0;
-            padding: 10px;
+            gap: 8px;
+            margin: 5px 0;
+            padding: 8px;
             border: 1px solid #ddd;
             background-color: #fff;
-        }
-        .batch-buttons {
-            margin: 10px 0;
         }
         .login-container {
             display: flex;
@@ -120,11 +130,24 @@
         .login-form {
             display: flex;
             flex-direction: column;
-            gap: 10px;
-            padding: 20px;
+            gap: 8px;
+            padding: 15px;
             border: 1px solid #ddd;
             border-radius: 8px;
             background-color: #fff;
+        }
+        .preview-table {
+            margin-top: 5px;
+            border-collapse: collapse;
+            width: 100%;
+        }
+        .preview-table th, .preview-table td {
+            border: 1px solid #ddd;
+            padding: 6px;
+            text-align: left;
+        }
+        .preview-table th {
+            background-color: #f5f5f5;
         }
         @media (max-width: 600px) {
             .control-panel, .form-container, .search-container {
@@ -144,17 +167,26 @@
         </div>
     </div>
     <div id="mainPage" class="container" style="display:none;">
-        <!-- 操作面板 -->
         <div class="control-panel">
-            <button onclick="showAddForm()">新增紙種</button>
-            <button onclick="showDeleteForm()">刪除紙種</button>
-            <button onclick="showTransferForm()">調動紙種</button>
-            <button onclick="showBatchDeleteForm()">批次刪除</button>
-            <button onclick="showBatchTransferForm()">批次調動</button>
-            <button onclick="logout()">登出</button>
+            <div class="control-panel-row">
+                <div class="control-panel-left">
+                    <button onclick="showAddForm()">新增紙種</button>
+                    <button onclick="showDeleteForm()">删除紙種</button>
+                </div>
+                <button onclick="logout()">登出</button>
+            </div>
+            <div class="control-panel-row">
+                <div class="control-panel-left">
+                    <button onclick="showTransferForm()">調動紙種</button>
+                </div>
+            </div>
+            <div class="control-panel-row">
+                <div class="control-panel-left">
+                    <button onclick="showBatchDeleteForm()">批次删除</button>
+                    <button onclick="showBatchTransferForm()">批次調動</button>
+                </div>
+            </div>
         </div>
-
-        <!-- 新增表單 -->
         <div id="addForm" style="display:none;" class="form-container">
             <input type="text" id="newName" placeholder="紙種名稱">
             <input type="text" id="newSize" placeholder="尺寸">
@@ -169,8 +201,6 @@
             <button onclick="addPaper()">確認</button>
             <span id="addError" class="error-msg"></span>
         </div>
-
-        <!-- 刪除表單 -->
         <div id="deleteForm" style="display:none;" class="form-container">
             <select id="delShelf">
                 <option value="1">貨架一</option>
@@ -184,8 +214,6 @@
             <button onclick="confirmDelete()">刪除</button>
             <span id="delConfirm" class="error-msg"></span>
         </div>
-
-        <!-- 調動表單 -->
         <div id="transferForm" style="display:none;" class="form-container">
             <select id="fromShelf">
                 <option value="1">貨架一</option>
@@ -207,8 +235,6 @@
             <button onclick="transferPaper()">確認調動</button>
             <span id="transferError" class="error-msg"></span>
         </div>
-
-        <!-- 批次刪除表單 -->
         <div id="batchDeleteForm" style="display:none;" class="form-container">
             <select id="batchDelShelf">
                 <option value="1">貨架一</option>
@@ -220,8 +246,6 @@
             <button onclick="batchDelete()">確認批次刪除</button>
             <span id="batchDelError" class="error-msg"></span>
         </div>
-
-        <!-- 批次調動表單 -->
         <div id="batchTransferForm" style="display:none;" class="form-container">
             <select id="batchFromShelf">
                 <option value="1">貨架一</option>
@@ -237,14 +261,26 @@
                 <option value="4">貨架四</option>
                 <option value="5">貨架五</option>
             </select>
-            <button onclick="batchTransfer()">確認批次調動</button>
+            <button onclick="previewBatchTransfer()">預覽調動</button>
+            <div id="batchTransferPreview" style="display:none;">
+                <h4>調動預覽</h4>
+                <table class="preview-table">
+                    <thead>
+                        <tr>
+                            <th>名稱</th>
+                            <th>尺寸</th>
+                            <th>原數量 (張)</th>
+                            <th>調動數量 (張)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="batchTransferPreviewBody"></tbody>
+                </table>
+                <button onclick="confirmBatchTransfer()">確認批次調動</button>
+                <button onclick="cancelBatchTransfer()">取消</button>
+            </div>
             <span id="batchTransferError" class="error-msg"></span>
         </div>
-
-        <!-- 貨架表格 -->
         <div class="shelf-section" id="shelves"></div>
-
-        <!-- 操作記錄 -->
         <div class="log-section">
             <h3>操作記錄（最近50筆）</h3>
             <div class="search-container">
@@ -258,19 +294,43 @@
             <div id="logs"></div>
         </div>
     </div>
-
+    <script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function loadFileData(filename) {
+            if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+                try {
+                    var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                    var firstSheetName = workbook.SheetNames[0];
+                    var worksheet = workbook.Sheets[firstSheetName];
+                    var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                    var filteredData = jsonData.filter(row =>
+                        row.some(cell => cell !== '' && cell !== null && cell !== undefined)
+                    );
+                    var csv = XLSX.utils.aoa_to_sheet(filteredData);
+                    csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                    return csv;
+                } catch (e) {
+                    console.error(e);
+                    return "";
+                }
+            }
+            return gk_fileData[filename] || "";
+        }
+    </script>
     <script>
-        // 戶
         const users = {
             'f': 'f',
             'x': 'x',
             'u': 'u'
         };
-
-        // 檢查是否已登入
+        let currentUser = null;
+        let batchTransferItems = [];
         function checkLogin() {
             const isLoggedIn = localStorage.getItem('isLoggedIn');
-            if (isLoggedIn === 'true') {
+            currentUser = localStorage.getItem('currentUser');
+            if (isLoggedIn === 'true' && currentUser) {
                 document.getElementById('loginPage').style.display = 'none';
                 document.getElementById('mainPage').style.display = 'block';
             } else {
@@ -278,20 +338,18 @@
                 document.getElementById('mainPage').style.display = 'none';
             }
         }
-
-        // 登入功能
         function login() {
             const username = document.getElementById('username').value.trim();
             const password = document.getElementById('password').value;
             const loginError = document.getElementById('loginError');
-
             if (!username || !password) {
                 loginError.innerText = '請輸入帳號和密碼！';
                 return;
             }
-
             if (users[username] && users[username] === password) {
                 localStorage.setItem('isLoggedIn', 'true');
+                localStorage.setItem('currentUser', username);
+                currentUser = username;
                 document.getElementById('loginPage').style.display = 'none';
                 document.getElementById('mainPage').style.display = 'block';
                 loginError.innerText = '';
@@ -301,15 +359,14 @@
                 loginError.innerText = '帳號或密碼錯誤！';
             }
         }
-
-        // 登出功能
         function logout() {
             localStorage.setItem('isLoggedIn', 'false');
+            localStorage.removeItem('currentUser');
+            currentUser = null;
             document.getElementById('loginPage').style.display = 'flex';
             document.getElementById('mainPage').style.display = 'none';
             hideAllForms();
         }
-
         let shelvesData = {
             1: { items: [], sortOrder: 'desc' },
             2: { items: [], sortOrder: 'desc' },
@@ -320,8 +377,6 @@
         let originalData = { 1: [], 2: [], 3: [], 4: [], 5: [] };
         let logs = [];
         let allLogs = [];
-
-        // 初始化貨架表格
         function initShelves() {
             let html = '';
             for (let i = 1; i <= 5; i++) {
@@ -349,16 +404,12 @@
             }
             document.getElementById('shelves').innerHTML = html;
         }
-
-        // 驗證輸入
         function validateInput(name, size, qty) {
             if (!name || !size || qty === '' || isNaN(qty) || qty < 0) {
                 return '請填寫所有欄位，且數量必須為非負數！';
             }
             return '';
         }
-
-        // 新增紙種功能
         function addPaper() {
             const newItem = {
                 name: document.getElementById('newName').value.trim(),
@@ -366,18 +417,15 @@
                 qty: parseInt(document.getElementById('newQty').value, 10),
                 shelf: document.getElementById('newShelf').value
             };
-
             const error = validateInput(newItem.name, newItem.size, newItem.qty);
             if (error) {
                 document.getElementById('addError').innerText = error;
                 return;
             }
-
             if (checkDuplicate(newItem)) {
                 document.getElementById('addError').innerText = '有相同紙種，請修改名稱或尺寸！';
                 return;
             }
-
             shelvesData[newItem.shelf].items.push(newItem);
             originalData[newItem.shelf].push({ ...newItem });
             updateTable(newItem.shelf);
@@ -385,21 +433,17 @@
             saveData();
             clearForm('add');
         }
-
-        // 刪除確認功能
         function confirmDelete() {
             const delInfo = {
                 shelf: document.getElementById('delShelf').value,
                 name: document.getElementById('delName').value.trim(),
                 size: document.getElementById('delSize').value.trim()
             };
-
             const error = validateInput(delInfo.name, delInfo.size, 0);
             if (error) {
                 document.getElementById('delConfirm').innerText = '請填寫名稱和尺寸！';
                 return;
             }
-
             const itemIndex = shelvesData[delInfo.shelf].items.findIndex(
                 item => item.name === delInfo.name && item.size === delInfo.size
             );
@@ -407,7 +451,6 @@
                 document.getElementById('delConfirm').innerText = '找不到指定紙種！';
                 return;
             }
-
             if (confirm(`確定刪除 ${delInfo.name} (${delInfo.size}) 嗎？`)) {
                 const deletedItem = shelvesData[delInfo.shelf].items.splice(itemIndex, 1)[0];
                 originalData[delInfo.shelf] = originalData[delInfo.shelf].filter(
@@ -419,8 +462,6 @@
                 clearForm('delete');
             }
         }
-
-        // 調動紙種功能
         function transferPaper() {
             const transferInfo = {
                 fromShelf: document.getElementById('fromShelf').value,
@@ -429,7 +470,6 @@
                 size: document.getElementById('transferSize').value.trim(),
                 qty: parseInt(document.getElementById('transferQty').value, 10)
             };
-
             if (transferInfo.fromShelf === transferInfo.toShelf) {
                 document.getElementById('transferError').innerText = '不能在同一貨架間調動！';
                 return;
@@ -443,7 +483,6 @@
                 document.getElementById('transferError').innerText = '調動數量必須大於0！';
                 return;
             }
-
             const fromItemIndex = shelvesData[transferInfo.fromShelf].items.findIndex(
                 item => item.name === transferInfo.name && item.size === transferInfo.size
             );
@@ -451,17 +490,14 @@
                 document.getElementById('transferError').innerText = '來源貨架找不到指定紙種！';
                 return;
             }
-
             const fromItem = shelvesData[transferInfo.fromShelf].items[fromItemIndex];
             if (fromItem.qty < transferInfo.qty) {
                 document.getElementById('transferError').innerText = '來源貨架數量不足！';
                 return;
             }
-
             const toItemIndex = shelvesData[transferInfo.toShelf].items.findIndex(
                 item => item.name === transferInfo.name && item.size === transferInfo.size
             );
-
             fromItem.qty -= transferInfo.qty;
             if (toItemIndex !== -1) {
                 shelvesData[transferInfo.toShelf].items[toItemIndex].qty += transferInfo.qty;
@@ -477,14 +513,12 @@
                     qty: transferInfo.qty
                 });
             }
-
             if (fromItem.qty === 0) {
                 shelvesData[transferInfo.fromShelf].items.splice(fromItemIndex, 1);
                 originalData[transferInfo.fromShelf] = originalData[transferInfo.fromShelf].filter(
                     item => !(item.name === transferInfo.name && item.size === transferInfo.size)
                 );
             }
-
             updateTable(transferInfo.fromShelf);
             updateTable(transferInfo.toShelf);
             addLog(transferInfo.fromShelf, transferInfo, '調出', transferInfo.qty, -transferInfo.qty);
@@ -492,26 +526,21 @@
             saveData();
             clearForm('transfer');
         }
-
-        // 批次刪除功能
         function batchDelete() {
             const shelfNum = document.getElementById('batchDelShelf').value;
             const checkboxes = document.querySelectorAll(`#shelf${shelfNum} input[type="checkbox"]:not(#selectAll${shelfNum})`);
             const selectedIndices = [];
-
             checkboxes.forEach((checkbox, index) => {
                 if (checkbox.checked) {
                     selectedIndices.push(index);
                 }
             });
-
             if (selectedIndices.length === 0) {
                 document.getElementById('batchDelError').innerText = '請至少選擇一項！';
                 return;
             }
-
             if (confirm(`確定刪除 ${selectedIndices.length} 項紙種嗎？`)) {
-                selectedIndices.sort((a, b) => b - a); // 從後往前刪除以避免索引問題
+                selectedIndices.sort((a, b) => b - a);
                 selectedIndices.forEach(index => {
                     const deletedItem = shelvesData[shelfNum].items.splice(index, 1)[0];
                     originalData[shelfNum] = originalData[shelfNum].filter(
@@ -525,68 +554,98 @@
                 hideAllForms();
             }
         }
-
-        // 批次調動功能
-        function batchTransfer() {
+        function previewBatchTransfer() {
             const fromShelf = document.getElementById('batchFromShelf').value;
             const toShelf = document.getElementById('batchToShelf').value;
             const checkboxes = document.querySelectorAll(`#shelf${fromShelf} input[type="checkbox"]:not(#selectAll${fromShelf})`);
             const selectedIndices = [];
-
             if (fromShelf === toShelf) {
                 document.getElementById('batchTransferError').innerText = '不能在同一貨架間調動！';
                 return;
             }
-
             checkboxes.forEach((checkbox, index) => {
                 if (checkbox.checked) {
                     selectedIndices.push(index);
                 }
             });
-
             if (selectedIndices.length === 0) {
                 document.getElementById('batchTransferError').innerText = '請至少選擇一項！';
                 return;
             }
-
-            if (confirm(`確定將 ${selectedIndices.length} 項紙種從貨架${fromShelf}調動到貨架${toShelf}嗎？`)) {
-                selectedIndices.forEach(index => {
-                    const item = shelvesData[fromShelf].items[index];
-                    const toItemIndex = shelvesData[toShelf].items.findIndex(
-                        toItem => toItem.name === item.name && toItem.size === item.size
-                    );
-
-                    if (toItemIndex !== -1) {
-                        shelvesData[toShelf].items[toItemIndex].qty += item.qty;
-                    } else {
-                        shelvesData[toShelf].items.push({ ...item });
-                        originalData[toShelf].push({ ...item });
-                    }
-
-                    addLog(fromShelf, item, '批次調出', item.qty, -item.qty);
-                    addLog(toShelf, item, '批次調入', 0, item.qty);
-                });
-
-                // 移除來源貨架的項目
-                selectedIndices.sort((a, b) => b - a);
-                selectedIndices.forEach(index => {
-                    shelvesData[fromShelf].items.splice(index, 1);
-                });
-                originalData[fromShelf] = originalData[fromShelf].filter(
-                    item => !selectedIndices.some(idx => 
-                        shelvesData[fromShelf].items[idx]?.name === item.name && 
-                        shelvesData[fromShelf].items[idx]?.size === item.size)
-                );
-
-                updateTable(fromShelf);
-                updateTable(toShelf);
-                saveData();
-                document.getElementById('batchTransferError').innerText = '';
-                hideAllForms();
-            }
+            batchTransferItems = selectedIndices.map(index => {
+                const item = { ...shelvesData[fromShelf].items[index] };
+                if (!item.qty || item.qty <= 0) {
+                    document.getElementById('batchTransferError').innerText = `項目 ${item.name} (${item.size}) 數量無效！`;
+                    throw new Error('Invalid quantity');
+                }
+                return { ...item, transferQty: item.qty };
+            });
+            const previewBody = document.getElementById('batchTransferPreviewBody');
+            let rows = '';
+            batchTransferItems.forEach((item, index) => {
+                rows += `
+                    <tr>
+                        <td>${item.name}</td>
+                        <td>${item.size}</td>
+                        <td>${item.qty}</td>
+                        <td>
+                            <input type="number" id="batchTransferQty${index}" value="${item.transferQty}" min="1" max="${item.qty}" onchange="updateBatchTransferQty(${index}, this.value)">
+                        </td>
+                    </tr>`;
+            });
+            previewBody.innerHTML = rows;
+            document.getElementById('batchTransferPreview').style.display = 'block';
+            document.getElementById('batchTransferError').innerText = '';
         }
-
-        // 表格更新
+        function updateBatchTransferQty(index, value) {
+            const qty = parseInt(value, 10);
+            if (isNaN(qty) || qty <= 0 || qty > batchTransferItems[index].qty) {
+                alert('調動數量必須在 1 和原數量之間！');
+                document.getElementById(`batchTransferQty${index}`).value = batchTransferItems[index].transferQty;
+                return;
+            }
+            batchTransferItems[index].transferQty = qty;
+        }
+        function confirmBatchTransfer() {
+            const fromShelf = document.getElementById('batchFromShelf').value;
+            const toShelf = document.getElementById('batchToShelf').value;
+            batchTransferItems.forEach(item => {
+                const toItemIndex = shelvesData[toShelf].items.findIndex(
+                    toItem => toItem.name === item.name && toItem.size === item.size
+                );
+                if (toItemIndex !== -1) {
+                    shelvesData[toShelf].items[toItemIndex].qty += item.transferQty;
+                } else {
+                    shelvesData[toShelf].items.push({ name: item.name, size: item.size, qty: item.transferQty });
+                    originalData[toShelf].push({ name: item.name, size: item.size, qty: item.transferQty });
+                }
+                const fromItemIndex = shelvesData[fromShelf].items.findIndex(
+                    fromItem => fromItem.name === item.name && fromItem.size === item.size
+                );
+                if (fromItemIndex !== -1) {
+                    shelvesData[fromShelf].items[fromItemIndex].qty -= item.transferQty;
+                    if (shelvesData[fromShelf].items[fromItemIndex].qty === 0) {
+                        shelvesData[fromShelf].items.splice(fromItemIndex, 1);
+                        originalData[fromShelf] = originalData[fromShelf].filter(
+                            fromItem => !(fromItem.name === item.name && fromItem.size === item.size)
+                        );
+                    }
+                }
+                addLog(fromShelf, item, '批次調出', item.transferQty, -item.transferQty);
+                addLog(toShelf, item, '批次調入', 0, item.transferQty);
+            });
+            updateTable(fromShelf);
+            updateTable(toShelf);
+            saveData();
+            cancelBatchTransfer();
+        }
+        function cancelBatchTransfer() {
+            batchTransferItems = [];
+            document.getElementById('batchTransferPreview').style.display = 'none';
+            document.getElementById('batchTransferPreviewBody').innerHTML = '';
+            document.getElementById('batchTransferError').innerText = '';
+            hideAllForms();
+        }
         function updateTable(shelfNum) {
             const table = document.getElementById(`shelf${shelfNum}`);
             let rows = '<tr><th><input type="checkbox" id="selectAll' + shelfNum + '" onclick="selectAll(' + shelfNum + ')"></th><th>名稱</th><th>尺寸</th><th>數量</th><th>調整數量</th></tr>';
@@ -604,8 +663,6 @@
             });
             table.innerHTML = rows;
         }
-
-        // 全選功能
         function selectAll(shelfNum) {
             const selectAllCheckbox = document.getElementById(`selectAll${shelfNum}`);
             const checkboxes = document.querySelectorAll(`#shelf${shelfNum} .item-checkbox`);
@@ -613,8 +670,6 @@
                 checkbox.checked = selectAllCheckbox.checked;
             });
         }
-
-        // 取消全選
         function deselectAll(shelfNum) {
             const selectAllCheckbox = document.getElementById(`selectAll${shelfNum}`);
             const checkboxes = document.querySelectorAll(`#shelf${shelfNum} .item-checkbox`);
@@ -623,12 +678,9 @@
             });
             selectAllCheckbox.checked = false;
         }
-
-        // 排序功能
         function sortTable(shelfNum, type) {
             const shelfData = shelvesData[shelfNum].items;
             const currentOrder = shelvesData[shelfNum].sortOrder;
-
             shelfData.sort((a, b) => {
                 let comparison = 0;
                 if (type === 'name') {
@@ -640,64 +692,51 @@
                 }
                 return currentOrder === 'asc' ? comparison : -comparison;
             });
-
             shelvesData[shelfNum].sortOrder = currentOrder === 'asc' ? 'desc' : 'asc';
             updateTable(shelfNum);
         }
-
-        // 清除排序
         function clearSort(shelfNum) {
             shelvesData[shelfNum].items = [...originalData[shelfNum]];
             shelvesData[shelfNum].sortOrder = 'desc';
             updateTable(shelfNum);
         }
-
-        // 檢查重複
         function checkDuplicate(newItem) {
             return shelvesData[newItem.shelf].items.some(
                 item => item.name === newItem.name && item.size === newItem.size
             );
         }
-
-        // 添加操作記錄
         function addLog(shelfNum, item, action, originalQty, newQty) {
             const timestamp = new Date().toLocaleString();
             let message = '';
             if (action === '新增') {
-                message = `貨架${shelfNum}：新增 ${item.name} (${item.size})，數量 ${newQty} 張，時間：${timestamp}`;
+                message = `用戶${currentUser} 貨架${shelfNum}：新增 ${item.name} (${item.size})，數量 ${newQty} 張，時間：${timestamp}`;
             } else if (action === '刪除' || action === '批次刪除') {
-                message = `貨架${shelfNum}：${action} ${item.name} (${item.size})，原數量 ${originalQty} 張，時間：${timestamp}`;
+                message = `用戶${currentUser} 貨架${shelfNum}：${action} ${item.name} (${item.size})，原數量 ${originalQty} 張，時間：${timestamp}`;
             } else if (action === '調整') {
                 const change = newQty >= 0 ? `增加 ${newQty}` : `減少 ${Math.abs(newQty)}`;
-                message = `貨架${shelfNum}：${item.name} (${item.size}) 原數量 ${originalQty} 張，${change} 張，現數量 ${item.qty} 張，時間：${timestamp}`;
+                message = `用戶${currentUser} 貨架${shelfNum}：${item.name} (${item.size}) 原數量 ${originalQty} 張，${change} 張，現數量 ${item.qty} 張，時間：${timestamp}`;
             } else if (action === '調出' || action === '批次調出') {
-                message = `貨架${shelfNum}：${action} ${item.name} (${item.size})，數量 ${originalQty} 張，時間：${timestamp}`;
+                message = `用戶${currentUser} 貨架${shelfNum}：${action} ${item.name} (${item.size})，數量 ${originalQty} 張，時間：${timestamp}`;
             } else if (action === '調入' || action === '批次調入') {
-                message = `貨架${shelfNum}：${action} ${item.name} (${item.size})，數量 ${newQty} 張，時間：${timestamp}`;
+                message = `用戶${currentUser} 貨架${shelfNum}：${action} ${item.name} (${item.size})，數量 ${newQty} 張，時間：${timestamp}`;
             }
             allLogs.unshift({ message, timestamp: new Date() });
             logs = allLogs.slice(0, 50);
             updateLogs();
         }
-
-        // 更新操作記錄顯示
         function updateLogs() {
             const logContainer = document.getElementById('logs');
             logContainer.innerHTML = logs.map(log => `<div>${log.message}</div>`).join('');
         }
-
-        // 搜索操作記錄
         function searchLogs() {
             const startDate = document.getElementById('startDate').value;
             const endDate = document.getElementById('endDate').value;
             const searchName = document.getElementById('searchName').value.trim().toLowerCase();
             const searchError = document.getElementById('searchError');
-
             if (startDate && endDate && new Date(startDate) > new Date(endDate)) {
                 searchError.innerText = '開始日期不能晚於結束日期！';
                 return;
             }
-
             logs = allLogs.filter(log => {
                 const logDate = new Date(log.timestamp);
                 const start = startDate ? new Date(startDate) : null;
@@ -706,18 +745,14 @@
                 const dateMatch = (!start || logDate >= start) && (!end || logDate <= new Date(end.setHours(23, 59, 59, 999)));
                 return nameMatch && dateMatch;
             });
-
             if (logs.length === 0) {
                 searchError.innerText = '無符合條件的記錄！';
             } else {
                 searchError.innerText = '';
             }
-
             logs = logs.slice(0, 50);
             updateLogs();
         }
-
-        // 重置操作記錄顯示
         function resetLogs() {
             document.getElementById('startDate').value = '';
             document.getElementById('endDate').value = '';
@@ -726,42 +761,34 @@
             logs = allLogs.slice(0, 50);
             updateLogs();
         }
-
-        // 顯示/隱藏表單
         function showAddForm() {
             hideAllForms();
             document.getElementById('addForm').style.display = 'flex';
         }
-
         function showDeleteForm() {
             hideAllForms();
             document.getElementById('deleteForm').style.display = 'flex';
         }
-
         function showTransferForm() {
             hideAllForms();
             document.getElementById('transferForm').style.display = 'flex';
         }
-
         function showBatchDeleteForm() {
             hideAllForms();
             document.getElementById('batchDeleteForm').style.display = 'flex';
         }
-
         function showBatchTransferForm() {
             hideAllForms();
             document.getElementById('batchTransferForm').style.display = 'flex';
         }
-
         function hideAllForms() {
             document.getElementById('addForm').style.display = 'none';
             document.getElementById('deleteForm').style.display = 'none';
             document.getElementById('transferForm').style.display = 'none';
             document.getElementById('batchDeleteForm').style.display = 'none';
             document.getElementById('batchTransferForm').style.display = 'none';
+            document.getElementById('batchTransferPreview').style.display = 'none';
         }
-
-        // 清除表單內容
         function clearForm(formType) {
             if (formType === 'add') {
                 document.getElementById('newName').value = '';
@@ -779,15 +806,11 @@
                 document.getElementById('transferError').innerText = '';
             }
         }
-
-        // 保存數據到 localStorage
         function saveData() {
             localStorage.setItem('shelvesData', JSON.stringify(shelvesData));
             localStorage.setItem('originalData', JSON.stringify(originalData));
             localStorage.setItem('allLogs', JSON.stringify(allLogs));
         }
-
-        // 從 localStorage 加載數據
         function loadData() {
             const savedShelves = localStorage.getItem('shelvesData');
             const savedOriginal = localStorage.getItem('originalData');
@@ -803,8 +826,6 @@
             }
             updateLogs();
         }
-
-        // 初始化測試數據
         function initTestData() {
             const testData = [
                 { shelf: 1, name: '正度紙', size: '78.7*109.2cm', qty: 100 },
@@ -823,17 +844,13 @@
             }
             saveData();
         }
-
-        // 調整數量
         function adjustQuantity(shelfNum, index) {
             const adjustInput = document.getElementById(`adjustQty${shelfNum}_${index}`);
             const adjustValue = parseInt(adjustInput.value, 10);
-
             if (isNaN(adjustValue)) {
                 alert('請輸入有效的數字！');
                 return;
             }
-
             const item = shelvesData[shelfNum].items[index];
             const originalQty = item.qty;
             item.qty += adjustValue;
@@ -847,8 +864,6 @@
             saveData();
             adjustInput.value = '';
         }
-
-        // 頁面加載時初始化
         window.onload = function() {
             checkLogin();
             initShelves();
