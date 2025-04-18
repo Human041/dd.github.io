@@ -1,38 +1,10 @@
-<script type="text/javascript">
-        var gk_isXlsx = false;
-        var gk_xlsxFileLookup = {};
-        var gk_fileData = {};
-        function loadFileData(filename) {
-        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
-            try {
-                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
-                var firstSheetName = workbook.SheetNames[0];
-                var worksheet = workbook.Sheets[firstSheetName];
-
-                // Convert sheet to JSON to filter blank rows
-                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
-                // Filter out blank rows (rows where all cells are empty, null, or undefined)
-                var filteredData = jsonData.filter(row =>
-                    row.some(cell => cell !== '' && cell !== null && cell !== undefined)
-                );
-
-                // Convert filtered JSON back to CSV
-                var csv = XLSX.utils.aoa_to_sheet(filteredData); // Create a new sheet from filtered array of arrays
-                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
-                return csv;
-            } catch (e) {
-                console.error(e);
-                return "";
-            }
-        }
-        return gk_fileData[filename] || "";
-        }
-        </script><!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>紙張庫存管理系統</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         .container {
             padding: 10px;
@@ -99,6 +71,18 @@
         button:hover {
             background-color: #0056b3;
         }
+        .confirm-button {
+            background-color: #28a745;
+        }
+        .confirm-button:hover {
+            background-color: #218838;
+        }
+        .clear-logs-button {
+            background-color: #dc3545;
+        }
+        .clear-logs-button:hover {
+            background-color: #c82333;
+        }
         input, select {
             padding: 5px;
             margin: 4px;
@@ -149,8 +133,43 @@
         .preview-table th {
             background-color: #f5f5f5;
         }
+        .row-transfer-form {
+            display: none;
+            flex-direction: column;
+            gap: 4px;
+            padding: 4px;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-top: 4px;
+        }
+        .row-transfer-form input, .row-transfer-form select {
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .row-transfer-form button {
+            align-self: flex-end;
+        }
+        .row-transfer-form .error-msg {
+            font-size: 0.9em;
+        }
+        .shelf-name-form {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin: 5px 0;
+        }
+        .import-container {
+            margin: 5px 0;
+            padding: 8px;
+            border: 1px solid #ddd;
+            background-color: #fff;
+        }
         @media (max-width: 600px) {
-            .control-panel, .form-container, .search-container {
+            .control-panel, .form-container, .search-container, .shelf-name-form {
+                flex-direction: column;
+            }
+            .row-transfer-form {
                 flex-direction: column;
             }
         }
@@ -177,11 +196,6 @@
             </div>
             <div class="control-panel-row">
                 <div class="control-panel-left">
-                    <button onclick="showTransferForm()">調動紙種</button>
-                </div>
-            </div>
-            <div class="control-panel-row">
-                <div class="control-panel-left">
                     <button onclick="showBatchDeleteForm()">批次删除</button>
                     <button onclick="showBatchTransferForm()">批次調動</button>
                 </div>
@@ -192,74 +206,60 @@
             <input type="text" id="newSize" placeholder="尺寸">
             <input type="number" id="newQty" placeholder="數量" min="0">
             <select id="newShelf">
-                <option value="1">貨架一</option>
-                <option value="2">貨架二</option>
-                <option value="3">貨架三</option>
-                <option value="4">貨架四</option>
-                <option value="5">貨架五</option>
+                <option value="1" data-name="貨架一">貨架一</option>
+                <option value="2" data-name="貨架二">貨架二</option>
+                <option value="3" data-name="貨架三">貨架三</option>
+                <option value="4" data-name="貨架四">貨架四</option>
+                <option value="5" data-name="貨架五">貨架五</option>
             </select>
-            <button onclick="addPaper()">確認</button>
+            <button class="confirm-button" onclick="addPaper()">確認</button>
             <span id="addError" class="error-msg"></span>
+            <div class="import-container">
+                <h4>批量導入紙種</h4>
+                <a href="#" onclick="downloadTemplate()">下載導入模板</a>
+                <input type="file" id="importFile" accept=".xlsx,.xls">
+                <button onclick="importExcel()">導入</button>
+                <span id="importError" class="error-msg"></span>
+            </div>
         </div>
         <div id="deleteForm" style="display:none;" class="form-container">
             <select id="delShelf">
-                <option value="1">貨架一</option>
-                <option value="2">貨架二</option>
-                <option value="3">貨架三</option>
-                <option value="4">貨架四</option>
-                <option value="5">貨架五</option>
+                <option value="1" data-name="貨架一">貨架一</option>
+                <option value="2" data-name="貨架二">貨架二</option>
+                <option value="3" data-name="貨架三">貨架三</option>
+                <option value="4" data-name="貨架四">貨架四</option>
+                <option value="5" data-name="貨架五">貨架五</option>
             </select>
             <input type="text" id="delName" placeholder="紙種名稱">
             <input type="text" id="delSize" placeholder="尺寸">
             <button onclick="confirmDelete()">刪除</button>
             <span id="delConfirm" class="error-msg"></span>
         </div>
-        <div id="transferForm" style="display:none;" class="form-container">
-            <select id="fromShelf">
-                <option value="1">貨架一</option>
-                <option value="2">貨架二</option>
-                <option value="3">貨架三</option>
-                <option value="4">貨架四</option>
-                <option value="5">貨架五</option>
-            </select>
-            <input type="text" id="transferName" placeholder="紙種名稱">
-            <input type="text" id="transferSize" placeholder="尺寸">
-            <input type="number" id="transferQty" placeholder="調動數量" min="1">
-            <select id="toShelf">
-                <option value="1">貨架一</option>
-                <option value="2">貨架二</option>
-                <option value="3">貨架三</option>
-                <option value="4">貨架四</option>
-                <option value="5">貨架五</option>
-            </select>
-            <button onclick="transferPaper()">確認調動</button>
-            <span id="transferError" class="error-msg"></span>
-        </div>
         <div id="batchDeleteForm" style="display:none;" class="form-container">
             <select id="batchDelShelf">
-                <option value="1">貨架一</option>
-                <option value="2">貨架二</option>
-                <option value="3">貨架三</option>
-                <option value="4">貨架四</option>
-                <option value="5">貨架五</option>
+                <option value="1" data-name="貨架一">貨架一</option>
+                <option value="2" data-name="貨架二">貨架二</option>
+                <option value="3" data-name="貨架三">貨架三</option>
+                <option value="4" data-name="貨架四">貨架四</option>
+                <option value="5" data-name="貨架五">貨架五</option>
             </select>
-            <button onclick="batchDelete()">確認批次刪除</button>
+            <button class="confirm-button" onclick="batchDelete()">確認批次刪除</button>
             <span id="batchDelError" class="error-msg"></span>
         </div>
         <div id="batchTransferForm" style="display:none;" class="form-container">
             <select id="batchFromShelf">
-                <option value="1">貨架一</option>
-                <option value="2">貨架二</option>
-                <option value="3">貨架三</option>
-                <option value="4">貨架四</option>
-                <option value="5">貨架五</option>
+                <option value="1" data-name="貨架一">貨架一</option>
+                <option value="2" data-name="貨架二">貨架二</option>
+                <option value="3" data-name="貨架三">貨架三</option>
+                <option value="4" data-name="貨架四">貨架四</option>
+                <option value="5" data-name="貨架五">貨架五</option>
             </select>
             <select id="batchToShelf">
-                <option value="1">貨架一</option>
-                <option value="2">貨架二</option>
-                <option value="3">貨架三</option>
-                <option value="4">貨架四</option>
-                <option value="5">貨架五</option>
+                <option value="1" data-name="貨架一">貨架一</option>
+                <option value="2" data-name="貨架二">貨架二</option>
+                <option value="3" data-name="貨架三">貨架三</option>
+                <option value="4" data-name="貨架四">貨架四</option>
+                <option value="5" data-name="貨架五">貨架五</option>
             </select>
             <button onclick="previewBatchTransfer()">預覽調動</button>
             <div id="batchTransferPreview" style="display:none;">
@@ -275,7 +275,7 @@
                     </thead>
                     <tbody id="batchTransferPreviewBody"></tbody>
                 </table>
-                <button onclick="confirmBatchTransfer()">確認批次調動</button>
+                <button class="confirm-button" onclick="confirmBatchTransfer()">確認批次調動</button>
                 <button onclick="cancelBatchTransfer()">取消</button>
             </div>
             <span id="batchTransferError" class="error-msg"></span>
@@ -289,37 +289,14 @@
                 <input type="text" id="searchName" placeholder="紙種名稱">
                 <button onclick="searchLogs()">搜索</button>
                 <button onclick="resetLogs()">重置</button>
+                <button class="clear-logs-button" onclick="clearLogs()">清除所有記錄</button>
                 <span id="searchError" class="error-msg"></span>
             </div>
             <div id="logs"></div>
         </div>
     </div>
-    <script type="text/javascript">
-        var gk_isXlsx = false;
-        var gk_xlsxFileLookup = {};
-        var gk_fileData = {};
-        function loadFileData(filename) {
-            if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
-                try {
-                    var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
-                    var firstSheetName = workbook.SheetNames[0];
-                    var worksheet = workbook.Sheets[firstSheetName];
-                    var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
-                    var filteredData = jsonData.filter(row =>
-                        row.some(cell => cell !== '' && cell !== null && cell !== undefined)
-                    );
-                    var csv = XLSX.utils.aoa_to_sheet(filteredData);
-                    csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
-                    return csv;
-                } catch (e) {
-                    console.error(e);
-                    return "";
-                }
-            }
-            return gk_fileData[filename] || "";
-        }
-    </script>
     <script>
+        // 用戶認證數據
         const users = {
             'f': 'f',
             'x': 'x',
@@ -327,6 +304,15 @@
         };
         let currentUser = null;
         let batchTransferItems = [];
+        let shelfNames = {
+            1: '貨架一',
+            2: '貨架二',
+            3: '貨架三',
+            4: '貨架四',
+            5: '貨架五'
+        };
+
+        // 檢查登錄狀態
         function checkLogin() {
             const isLoggedIn = localStorage.getItem('isLoggedIn');
             currentUser = localStorage.getItem('currentUser');
@@ -338,6 +324,8 @@
                 document.getElementById('mainPage').style.display = 'none';
             }
         }
+
+        // 登錄功能
         function login() {
             const username = document.getElementById('username').value.trim();
             const password = document.getElementById('password').value;
@@ -359,6 +347,8 @@
                 loginError.innerText = '帳號或密碼錯誤！';
             }
         }
+
+        // 登出功能
         function logout() {
             localStorage.setItem('isLoggedIn', 'false');
             localStorage.removeItem('currentUser');
@@ -367,6 +357,8 @@
             document.getElementById('mainPage').style.display = 'none';
             hideAllForms();
         }
+
+        // 貨架數據結構
         let shelvesData = {
             1: { items: [], sortOrder: 'desc' },
             2: { items: [], sortOrder: 'desc' },
@@ -377,12 +369,19 @@
         let originalData = { 1: [], 2: [], 3: [], 4: [], 5: [] };
         let logs = [];
         let allLogs = [];
+
+        // 初始化貨架界面
         function initShelves() {
             let html = '';
             for (let i = 1; i <= 5; i++) {
                 html += `
                 <div>
-                    <h3>貨架${i}</h3>
+                    <div class="shelf-name-form">
+                        <h3 id="shelfName${i}">${shelfNames[i]}</h3>
+                        <input type="text" id="newShelfName${i}" placeholder="新貨架名稱">
+                        <button class="confirm-button" onclick="renameShelf(${i})">修改名稱</button>
+                        <span id="renameError${i}" class="error-msg"></span>
+                    </div>
                     <div class="control-panel">
                         <button onclick="sortTable(${i}, 'name')">名稱排序</button>
                         <button onclick="sortTable(${i}, 'size')">尺寸排序</button>
@@ -398,18 +397,72 @@
                             <th>尺寸</th>
                             <th>數量 (張)</th>
                             <th>調整數量</th>
+                            <th>操作</th>
                         </tr>
                     </table>
                 </div>`;
             }
             document.getElementById('shelves').innerHTML = html;
+            updateShelfSelectOptions();
         }
+
+        // 修改貨架名稱
+        function renameShelf(shelfNum) {
+            const newName = document.getElementById(`newShelfName${shelfNum}`).value.trim();
+            const errorSpan = document.getElementById(`renameError${shelfNum}`);
+            if (!newName) {
+                errorSpan.innerText = '請輸入貨架名稱！';
+                return;
+            }
+            if (Object.values(shelfNames).includes(newName) && shelfNames[shelfNum] !== newName) {
+                errorSpan.innerText = '貨架名稱已存在！';
+                return;
+            }
+            shelfNames[shelfNum] = newName;
+            document.getElementById(`shelfName${shelfNum}`).innerText = newName;
+            updateShelfSelectOptions();
+            saveData();
+            errorSpan.innerText = '';
+            document.getElementById(`newShelfName${shelfNum}`).value = '';
+            addLog(shelfNum, { name: '', size: '' }, '修改貨架名稱', 0, 0, `貨架${shelfNum}名稱更改為${newName}`);
+        }
+
+        // 更新所有下拉選單的貨架名稱
+        function updateShelfSelectOptions() {
+            const selects = ['newShelf', 'delShelf', 'batchDelShelf', 'batchFromShelf', 'batchToShelf'];
+            selects.forEach(selectId => {
+                const select = document.getElementById(selectId);
+                select.innerHTML = '';
+                for (let i = 1; i <= 5; i++) {
+                    const option = document.createElement('option');
+                    option.value = i;
+                    option.setAttribute('data-name', shelfNames[i]);
+                    option.text = shelfNames[i];
+                    select.appendChild(option);
+                }
+            });
+            document.querySelectorAll('.row-transfer-form select[id^=toShelf_]').forEach(select => {
+                const currentValue = select.value;
+                select.innerHTML = '';
+                for (let i = 1; i <= 5; i++) {
+                    const option = document.createElement('option');
+                    option.value = i;
+                    option.text = shelfNames[i];
+                    if (i == currentValue) option.selected = true;
+                    select.appendChild(option);
+                }
+            });
+        }
+
+        // 驗證輸入數據
         function validateInput(name, size, qty) {
             if (!name || !size || qty === '' || isNaN(qty) || qty < 0) {
                 return '請填寫所有欄位，且數量必須為非負數！';
             }
             return '';
         }
+
+        // 添加單個紙種
         function addPaper() {
             const newItem = {
                 name: document.getElementById('newName').value.trim(),
@@ -433,6 +486,76 @@
             saveData();
             clearForm('add');
         }
+
+        // 下載 Excel 導入模板
+        function downloadTemplate() {
+            const templateData = [
+                ['紙種名稱', '尺寸', '數量', '貨架編號'],
+                ['示例紙種', '21*29.7cm', 100, 1]
+            ];
+            const ws = XLSX.utils.aoa_to_sheet(templateData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, '紙種模板');
+            XLSX.writeFile(wb, '紙種導入模板.xlsx');
+        }
+
+        // 導入 Excel 文件
+        function importExcel() {
+            const fileInput = document.getElementById('importFile');
+            const errorSpan = document.getElementById('importError');
+            const file = fileInput.files[0];
+            if (!file) {
+                errorSpan.innerText = '請選擇一個Excel文件！';
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const jsonData = XLSX.utils.sheet_to_json(sheet, { header: ['name', 'size', 'qty', 'shelf'], range: 1 });
+                    let error = '';
+                    jsonData.forEach((item, index) => {
+                        item.name = item.name ? String(item.name).trim() : '';
+                        item.size = item.size ? String(item.size).trim() : '';
+                        item.qty = parseInt(item.qty, 10);
+                        item.shelf = String(item.shelf).trim();
+                        if (!['1', '2', '3', '4', '5'].includes(item.shelf)) {
+                            error = `第${index + 2}行：貨架編號必須為1-5！`;
+                            return;
+                        }
+                        const validationError = validateInput(item.name, item.size, item.qty);
+                        if (validationError) {
+                            error = `第${index + 2}行：${validationError}`;
+                            return;
+                        }
+                        if (checkDuplicate(item)) {
+                            error = `第${index + 2}行：貨架${item.shelf}已有相同紙種（${item.name}, ${item.size}）！`;
+                            return;
+                        }
+                    });
+                    if (error) {
+                        errorSpan.innerText = error;
+                        return;
+                    }
+                    jsonData.forEach(item => {
+                        shelvesData[item.shelf].items.push(item);
+                        originalData[item.shelf].push({ ...item });
+                        updateTable(item.shelf);
+                        addLog(item.shelf, item, '批量導入', 0, item.qty);
+                    });
+                    saveData();
+                    errorSpan.innerText = '導入成功！';
+                    fileInput.value = '';
+                } catch (err) {
+                    errorSpan.innerText = '導入失敗：文件格式錯誤或數據無效！';
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // 刪除紙種
         function confirmDelete() {
             const delInfo = {
                 shelf: document.getElementById('delShelf').value,
@@ -462,37 +585,50 @@
                 clearForm('delete');
             }
         }
-        function transferPaper() {
+
+        // 顯示調動表單
+        function toggleTransferForm(shelfNum, index) {
+            const form = document.getElementById(`transferForm_${shelfNum}_${index}`);
+            const isVisible = form.style.display === 'flex';
+            hideAllRowForms();
+            if (!isVisible) {
+                form.style.display = 'flex';
+            }
+        }
+
+        // 調動紙種
+        function transferPaper(shelfNum, index) {
             const transferInfo = {
-                fromShelf: document.getElementById('fromShelf').value,
-                toShelf: document.getElementById('toShelf').value,
-                name: document.getElementById('transferName').value.trim(),
-                size: document.getElementById('transferSize').value.trim(),
-                qty: parseInt(document.getElementById('transferQty').value, 10)
+                fromShelf: document.getElementById(`fromShelf_${shelfNum}_${index}`).value,
+                toShelf: document.getElementById(`toShelf_${shelfNum}_${index}`).value,
+                name: document.getElementById(`transferName_${shelfNum}_${index}`).value.trim(),
+                size: document.getElementById(`transferSize_${shelfNum}_${index}`).value.trim(),
+                qty: parseInt(document.getElementById(`transferQty_${shelfNum}_${index}`).value, 10)
             };
+            const errorSpan = document.getElementById(`transferError_${shelfNum}_${index}`);
             if (transferInfo.fromShelf === transferInfo.toShelf) {
-                document.getElementById('transferError').innerText = '不能在同一貨架間調動！';
+                errorSpan.innerText = '不能在同一貨架間調動！';
                 return;
             }
             const error = validateInput(transferInfo.name, transferInfo.size, transferInfo.qty);
             if (error) {
-                document.getElementById('transferError').innerText = error;
+                errorSpan.innerText = error;
                 return;
             }
             if (transferInfo.qty <= 0) {
-                document.getElementById('transferError').innerText = '調動數量必須大於0！';
+                errorSpan.innerText = '調動數量必須大於0！';
                 return;
             }
             const fromItemIndex = shelvesData[transferInfo.fromShelf].items.findIndex(
                 item => item.name === transferInfo.name && item.size === transferInfo.size
             );
             if (fromItemIndex === -1) {
-                document.getElementById('transferError').innerText = '來源貨架找不到指定紙種！';
+                errorSpan.innerText = '來源貨架找不到指定紙種！';
                 return;
             }
             const fromItem = shelvesData[transferInfo.fromShelf].items[fromItemIndex];
             if (fromItem.qty < transferInfo.qty) {
-                document.getElementById('transferError').innerText = '來源貨架數量不足！';
+                errorSpan.innerText = '來源貨架數量不足！';
                 return;
             }
             const toItemIndex = shelvesData[transferInfo.toShelf].items.findIndex(
@@ -524,8 +660,11 @@
             addLog(transferInfo.fromShelf, transferInfo, '調出', transferInfo.qty, -transferInfo.qty);
             addLog(transferInfo.toShelf, transferInfo, '調入', 0, transferInfo.qty);
             saveData();
-            clearForm('transfer');
+            clearRowForm(shelfNum, index);
+            hideAllRowForms();
         }
+
+        // 批次刪除
         function batchDelete() {
             const shelfNum = document.getElementById('batchDelShelf').value;
             const checkboxes = document.querySelectorAll(`#shelf${shelfNum} input[type="checkbox"]:not(#selectAll${shelfNum})`);
@@ -554,6 +693,8 @@
                 hideAllForms();
             }
         }
+
+        // 預覽批次調動
         function previewBatchTransfer() {
             const fromShelf = document.getElementById('batchFromShelf').value;
             const toShelf = document.getElementById('batchToShelf').value;
@@ -597,6 +738,8 @@
             document.getElementById('batchTransferPreview').style.display = 'block';
             document.getElementById('batchTransferError').innerText = '';
         }
+
+        // 更新批次調動數量
         function updateBatchTransferQty(index, value) {
             const qty = parseInt(value, 10);
             if (isNaN(qty) || qty <= 0 || qty > batchTransferItems[index].qty) {
@@ -606,6 +749,8 @@
             }
             batchTransferItems[index].transferQty = qty;
         }
+
+        // 確認批次調動
         function confirmBatchTransfer() {
             const fromShelf = document.getElementById('batchFromShelf').value;
             const toShelf = document.getElementById('batchToShelf').value;
@@ -639,6 +784,8 @@
             saveData();
             cancelBatchTransfer();
         }
+
+        // 取消批次調動
         function cancelBatchTransfer() {
             batchTransferItems = [];
             document.getElementById('batchTransferPreview').style.display = 'none';
@@ -646,23 +793,59 @@
             document.getElementById('batchTransferError').innerText = '';
             hideAllForms();
         }
+
+        // 更新貨架表格
         function updateTable(shelfNum) {
             const table = document.getElementById(`shelf${shelfNum}`);
-            let rows = '<tr><th><input type="checkbox" id="selectAll' + shelfNum + '" onclick="selectAll(' + shelfNum + ')"></th><th>名稱</th><th>尺寸</th><th>數量</th><th>調整數量</th></tr>';
-            shelvesData[shelfNum].items.forEach((item, index) => {
-                rows += `<tr>
-                    <td><input type="checkbox" class="item-checkbox" id="checkbox${shelfNum}_${index}"></td>
-                    <td>${item.name}</td>
-                    <td>${item.size}</td>
-                    <td>${item.qty} 張</td>
-                    <td>
-                        <input type="number" id="adjustQty${shelfNum}_${index}" placeholder="輸入調整數量" style="width: 100px;">
-                        <button onclick="adjustQuantity(${shelfNum}, ${index})">確定</button>
-                    </td>
+            let rows = `
+                <tr>
+                    <th><input type="checkbox" id="selectAll${shelfNum}" onclick="selectAll(${shelfNum})"></th>
+                    <th>名稱</th>
+                    <th>尺寸</th>
+                    <th>數量</th>
+                    <th>調整數量</th>
+                    <th>操作</th>
                 </tr>`;
+            shelvesData[shelfNum].items.forEach((item, index) => {
+                rows += `
+                    <tr>
+                        <td><input type="checkbox" class="item-checkbox" id="checkbox${shelfNum}_${index}"></td>
+                        <td>${item.name}</td>
+                        <td>${item.size}</td>
+                        <td>${item.qty} 張</td>
+                        <td>
+                            <input type="number" id="adjustQty${shelfNum}_${index}" placeholder="輸入調整數量" style="width: 100px;">
+                            <button class="confirm-button" onclick="adjustQuantity(${shelfNum}, ${index})">確定</button>
+                        </td>
+                        <td>
+                            <button onclick="toggleTransferForm(${shelfNum}, ${index})">調動</button>
+                            <div id="transferForm_${shelfNum}_${index}" class="row-transfer-form">
+                                <select id="fromShelf_${shelfNum}_${index}" disabled>
+                                    <option value="${shelfNum}" selected>${shelfNames[shelfNum]}</option>
+                                </select>
+                                <input type="text" id="transferName_${shelfNum}_${index}" value="${item.name}" readonly>
+                                <input type="text" id="transferSize_${shelfNum}_${index}" value="${item.size}" readonly>
+                                <input type="number" id="transferQty_${shelfNum}_${index}" placeholder="調動數量" min="1">
+                                <select id="toShelf_${shelfNum}_${index}">
+                                    <option value="1" ${shelfNum !== '1' ? 'selected' : ''}>${shelfNames[1]}</option>
+                                    <option value="2" ${shelfNum !== '2' && shelfNum === '1' ? 'selected' : ''}>${shelfNames[2]}</option>
+                                    <option value="3" ${shelfNum !== '3' && shelfNum === '2' ? 'selected' : ''}>${shelfNames[3]}</option>
+                                    <option value="4" ${shelfNum !== '4' && shelfNum === '3' ? 'selected' : ''}>${shelfNames[4]}</option>
+                                    <option value="5" ${shelfNum !== '5' && shelfNum === '4' ? 'selected' : ''}>${shelfNames[5]}</option>
+                                </select>
+                                <div style="display: flex; gap: 4px;">
+                                    <button class="confirm-button" onclick="transferPaper(${shelfNum}, ${index})">確認調動</button>
+                                    <button onclick="hideAllRowForms()">取消</button>
+                                </div>
+                                <span id="transferError_${shelfNum}_${index}" class="error-msg"></span>
+                            </div>
+                        </td>
+                    </tr>`;
             });
             table.innerHTML = rows;
         }
+
+        // 全選貨架項目
         function selectAll(shelfNum) {
             const selectAllCheckbox = document.getElementById(`selectAll${shelfNum}`);
             const checkboxes = document.querySelectorAll(`#shelf${shelfNum} .item-checkbox`);
@@ -670,6 +853,8 @@
                 checkbox.checked = selectAllCheckbox.checked;
             });
         }
+
+        // 取消全選
         function deselectAll(shelfNum) {
             const selectAllCheckbox = document.getElementById(`selectAll${shelfNum}`);
             const checkboxes = document.querySelectorAll(`#shelf${shelfNum} .item-checkbox`);
@@ -678,6 +863,8 @@
             });
             selectAllCheckbox.checked = false;
         }
+
+        // 排序貨架項目
         function sortTable(shelfNum, type) {
             const shelfData = shelvesData[shelfNum].items;
             const currentOrder = shelvesData[shelfNum].sortOrder;
@@ -695,39 +882,63 @@
             shelvesData[shelfNum].sortOrder = currentOrder === 'asc' ? 'desc' : 'asc';
             updateTable(shelfNum);
         }
+
+        // 清除排序
         function clearSort(shelfNum) {
             shelvesData[shelfNum].items = [...originalData[shelfNum]];
             shelvesData[shelfNum].sortOrder = 'desc';
             updateTable(shelfNum);
         }
+
+        // 檢查紙種是否重複
         function checkDuplicate(newItem) {
             return shelvesData[newItem.shelf].items.some(
                 item => item.name === newItem.name && item.size === newItem.size
             );
         }
-        function addLog(shelfNum, item, action, originalQty, newQty) {
+
+        // 添加操作日誌
+        function addLog(shelfNum, item, action, originalQty, newQty, customMessage = null) {
             const timestamp = new Date().toLocaleString();
-            let message = '';
-            if (action === '新增') {
-                message = `用戶${currentUser} 貨架${shelfNum}：新增 ${item.name} (${item.size})，數量 ${newQty} 張，時間：${timestamp}`;
-            } else if (action === '刪除' || action === '批次刪除') {
-                message = `用戶${currentUser} 貨架${shelfNum}：${action} ${item.name} (${item.size})，原數量 ${originalQty} 張，時間：${timestamp}`;
-            } else if (action === '調整') {
-                const change = newQty >= 0 ? `增加 ${newQty}` : `減少 ${Math.abs(newQty)}`;
-                message = `用戶${currentUser} 貨架${shelfNum}：${item.name} (${item.size}) 原數量 ${originalQty} 張，${change} 張，現數量 ${item.qty} 張，時間：${timestamp}`;
-            } else if (action === '調出' || action === '批次調出') {
-                message = `用戶${currentUser} 貨架${shelfNum}：${action} ${item.name} (${item.size})，數量 ${originalQty} 張，時間：${timestamp}`;
-            } else if (action === '調入' || action === '批次調入') {
-                message = `用戶${currentUser} 貨架${shelfNum}：${action} ${item.name} (${item.size})，數量 ${newQty} 張，時間：${timestamp}`;
+            let message = customMessage;
+            if (!message) {
+                if (action === '新增') {
+                    message = `用戶${currentUser} ${shelfNames[shelfNum]}：新增 ${item.name} (${item.size})，數量 ${newQty} 張，時間：${timestamp}`;
+                } else if (action === '刪除' || action === '批次刪除') {
+                    message = `用戶${currentUser} ${shelfNames[shelfNum]}：${action} ${item.name} (${item.size})，原數量 ${originalQty} 張，時間：${timestamp}`;
+                } else if (action === '調整') {
+                    const change = newQty >= 0 ? `增加 ${newQty}` : `減少 ${Math.abs(newQty)}`;
+                    message = `用戶${currentUser} ${shelfNames[shelfNum]}：${item.name} (${item.size}) 原數量 ${originalQty} 張，${change} 張，現數量 ${item.qty} 張，時間：${timestamp}`;
+                } else if (action === '調出' || action === '批次調出') {
+                    message = `用戶${currentUser} ${shelfNames[shelfNum]}：${action} ${item.name} (${item.size})，數量 ${originalQty} 張，時間：${timestamp}`;
+                } else if (action === '調入' || action === '批次調入') {
+                    message = `用戶${currentUser} ${shelfNames[shelfNum]}：${action} ${item.name} (${item.size})，數量 ${newQty} 張，時間：${timestamp}`;
+                } else if (action === '批量導入') {
+                    message = `用戶${currentUser} ${shelfNames[shelfNum]}：批量導入 ${item.name} (${item.size})，數量 ${newQty} 張，時間：${timestamp}`;
+                }
             }
             allLogs.unshift({ message, timestamp: new Date() });
             logs = allLogs.slice(0, 50);
             updateLogs();
         }
+
+        // 更新日誌顯示
         function updateLogs() {
             const logContainer = document.getElementById('logs');
             logContainer.innerHTML = logs.map(log => `<div>${log.message}</div>`).join('');
         }
+
+        // 清除所有日誌
+        function clearLogs() {
+            if (confirm('確定要清除所有操作記錄嗎？此操作無法恢復！')) {
+                allLogs = [];
+                logs = [];
+                localStorage.setItem('allLogs', JSON.stringify(allLogs));
+                updateLogs();
+            }
+        }
+
+        // 搜索日誌
         function searchLogs() {
             const startDate = document.getElementById('startDate').value;
             const endDate = document.getElementById('endDate').value;
@@ -753,6 +964,8 @@
             logs = logs.slice(0, 50);
             updateLogs();
         }
+
+        // 重置日誌搜索
         function resetLogs() {
             document.getElementById('startDate').value = '';
             document.getElementById('endDate').value = '';
@@ -761,71 +974,104 @@
             logs = allLogs.slice(0, 50);
             updateLogs();
         }
+
+        // 顯示新增紙種表單
         function showAddForm() {
             hideAllForms();
             document.getElementById('addForm').style.display = 'flex';
         }
+
+        // 顯示刪除紙種表單
         function showDeleteForm() {
             hideAllForms();
             document.getElementById('deleteForm').style.display = 'flex';
         }
-        function showTransferForm() {
-            hideAllForms();
-            document.getElementById('transferForm').style.display = 'flex';
-        }
+
+        // 顯示批次刪除表單
         function showBatchDeleteForm() {
             hideAllForms();
             document.getElementById('batchDeleteForm').style.display = 'flex';
         }
+
+        // 顯示批次調動表單
         function showBatchTransferForm() {
             hideAllForms();
             document.getElementById('batchTransferForm').style.display = 'flex';
         }
+
+        // 隱藏所有表單
         function hideAllForms() {
             document.getElementById('addForm').style.display = 'none';
             document.getElementById('deleteForm').style.display = 'none';
-            document.getElementById('transferForm').style.display = 'none';
             document.getElementById('batchDeleteForm').style.display = 'none';
             document.getElementById('batchTransferForm').style.display = 'none';
             document.getElementById('batchTransferPreview').style.display = 'none';
+            hideAllRowForms();
         }
+
+        // 隱藏所有行內調動表單
+        function hideAllRowForms() {
+            document.querySelectorAll('.row-transfer-form').forEach(form => {
+                form.style.display = 'none';
+            });
+        }
+
+        // 清除表單數據
         function clearForm(formType) {
             if (formType === 'add') {
                 document.getElementById('newName').value = '';
                 document.getElementById('newSize').value = '';
                 document.getElementById('newQty').value = '';
                 document.getElementById('addError').innerText = '';
+                document.getElementById('importFile').value = '';
+                document.getElementById('importError').innerText = '';
             } else if (formType === 'delete') {
                 document.getElementById('delName').value = '';
                 document.getElementById('delSize').value = '';
                 document.getElementById('delConfirm').innerText = '';
-            } else if (formType === 'transfer') {
-                document.getElementById('transferName').value = '';
-                document.getElementById('transferSize').value = '';
-                document.getElementById('transferQty').value = '';
-                document.getElementById('transferError').innerText = '';
             }
         }
+
+        // 清除行內調動表單
+        function clearRowForm(shelfNum, index) {
+            document.getElementById(`transferQty_${shelfNum}_${index}`).value = '';
+            document.getElementById(`transferError_${shelfNum}_${index}`).innerText = '';
+        }
+
+        // 保存數據到 localStorage
         function saveData() {
             localStorage.setItem('shelvesData', JSON.stringify(shelvesData));
             localStorage.setItem('originalData', JSON.stringify(originalData));
             localStorage.setItem('allLogs', JSON.stringify(allLogs));
+            localStorage.setItem('shelfNames', JSON.stringify(shelfNames));
         }
+
+        // 從 localStorage 加載數據
         function loadData() {
             const savedShelves = localStorage.getItem('shelvesData');
             const savedOriginal = localStorage.getItem('originalData');
             const savedLogs = localStorage.getItem('allLogs');
+            const savedShelfNames = localStorage.getItem('shelfNames');
             if (savedShelves) shelvesData = JSON.parse(savedShelves);
             if (savedOriginal) originalData = JSON.parse(savedOriginal);
             if (savedLogs) {
                 allLogs = JSON.parse(savedLogs);
                 logs = allLogs.slice(0, 50);
             }
+            if (savedShelfNames) {
+                shelfNames = JSON.parse(savedShelfNames);
+            }
             for (let i = 1; i <= 5; i++) {
                 updateTable(i);
             }
             updateLogs();
+            updateShelfSelectOptions();
+            for (let i = 1; i <= 5; i++) {
+                document.getElementById(`shelfName${i}`).innerText = shelfNames[i];
+            }
         }
+
+        // 初始化測試數據
         function initTestData() {
             const testData = [
                 { shelf: 1, name: '正度紙', size: '78.7*109.2cm', qty: 100 },
@@ -844,6 +1090,8 @@
             }
             saveData();
         }
+
+        // 調整紙種數量
         function adjustQuantity(shelfNum, index) {
             const adjustInput = document.getElementById(`adjustQty${shelfNum}_${index}`);
             const adjustValue = parseInt(adjustInput.value, 10);
@@ -864,6 +1112,8 @@
             saveData();
             adjustInput.value = '';
         }
+
+        // 頁面加載時初始化
         window.onload = function() {
             checkLogin();
             initShelves();
